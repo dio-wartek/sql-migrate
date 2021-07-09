@@ -37,6 +37,8 @@ type MigrationSet struct {
 	//
 	// This should be used sparingly as it is removing a safety check.
 	IgnoreUnknown bool
+
+	Logger gorp.GorpLogger
 }
 
 var migSet = MigrationSet{}
@@ -437,11 +439,20 @@ func ExecMax(db *sql.DB, dialect string, m MigrationSource, dir MigrationDirecti
 	return migSet.ExecMax(db, dialect, m, dir, max)
 }
 
+func ExecMaxWithLogger(db *sql.DB, dialect string, m MigrationSource, dir MigrationDirection, max int, logger gorp.GorpLogger) (int, error) {
+	migSet.Logger = logger
+	return migSet.ExecMax(db, dialect, m, dir, max)
+}
+
 // Returns the number of applied migrations.
 func (ms MigrationSet) ExecMax(db *sql.DB, dialect string, m MigrationSource, dir MigrationDirection, max int) (int, error) {
 	migrations, dbMap, err := ms.PlanMigration(db, dialect, m, dir, max)
 	if err != nil {
 		return 0, err
+	}
+
+	if ms.Logger != nil {
+		dbMap.TraceOn("", ms.Logger)
 	}
 
 	// Apply migrations
